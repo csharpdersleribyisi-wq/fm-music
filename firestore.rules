@@ -1,0 +1,372 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global safety net: deny everything by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidUsername(handle) {
+      return handle is string && handle.size() >= 3 && handle.size() <= 32 && handle.matches('^[a-z0-9_]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidUserProfile(data) {
+      return data.userId is string &&
+             data.userId == request.auth.uid &&
+             data.displayName is string &&
+             data.displayName.size() >= 1 &&
+             data.displayName.size() <= 80 &&
+             (!('username' in data) || isValidUsername(data.username)) &&
+             data.favoriteGenres is list &&
+             data.favoriteGenres.size() <= 10 &&
+             (data.favoriteGenres.size() == 0 || data.favoriteGenres[0] is string) &&
+             data.preferredMood is string &&
+             data.preferredMood.size() >= 1 &&
+             data.preferredMood.size() <= 40 &&
+             data.offlineModeEnabled is bool;
+    }
+
+    function isValidDirectoryEntry(data, userId) {
+      return data.userId is string &&
+             data.userId == userId &&
+             isValidUsername(data.username) &&
+             data.displayName is string &&
+             data.displayName.size() >= 1 &&
+             data.displayName.size() <= 80;
+    }
+
+    function isValidPlaylist(data) {
+      return data.userId is string &&
+             data.userId == request.auth.uid &&
+             data.title is string &&
+             data.title.size() >= 1 &&
+             data.title.size() <= 80 &&
+             data.description is string &&
+             data.description.size() <= 240 &&
+             data.moodTag is string &&
+             data.moodTag.size() >= 1 &&
+             data.moodTag.size() <= 40 &&
+             data.coverKey is string &&
+             data.coverKey in ['midnight_synth', 'velvet_lofi', 'acoustic_dawn', 'sonic_horizon'] &&
+             data.trackIds is list &&
+             data.trackIds.size() <= 50 &&
+             (data.trackIds.size() == 0 || data.trackIds[0] is string) &&
+             data.personalized is bool;
+    }
+
+    function isValidCollaborativePlaylist(data) {
+      return data.ownerId is string &&
+             isValidId(data.ownerId) &&
+             data.ownerName is string &&
+             data.ownerName.size() >= 1 &&
+             data.ownerName.size() <= 80 &&
+             data.title is string &&
+             data.title.size() >= 1 &&
+             data.title.size() <= 80 &&
+             data.description is string &&
+             data.description.size() <= 240 &&
+             data.moodTag is string &&
+             data.moodTag.size() >= 1 &&
+             data.moodTag.size() <= 40 &&
+             data.coverKey is string &&
+             data.coverKey in ['midnight_synth', 'velvet_lofi', 'acoustic_dawn', 'sonic_horizon'] &&
+             data.trackIds is list &&
+             data.trackIds.size() <= 50 &&
+             (data.trackIds.size() == 0 || data.trackIds[0] is string) &&
+             data.collaboratorUids is list &&
+             data.collaboratorUids.size() >= 1 &&
+             data.collaboratorUids.size() <= 20 &&
+             data.ownerId in data.collaboratorUids &&
+             data.invitedHandles is list &&
+             data.invitedHandles.size() <= 20 &&
+             (data.invitedHandles.size() == 0 || data.invitedHandles[0] is string) &&
+             data.inviteCode is string &&
+             isValidId(data.inviteCode);
+    }
+
+    function isValidCollabInvite(data, inviteCode) {
+      return data.inviteCode is string &&
+             data.inviteCode == inviteCode &&
+             isValidId(data.inviteCode) &&
+             data.playlistId is string &&
+             isValidId(data.playlistId) &&
+             data.title is string &&
+             data.title.size() >= 1 &&
+             data.title.size() <= 80 &&
+             data.ownerId is string &&
+             data.ownerId == request.auth.uid &&
+             data.ownerName is string &&
+             data.ownerName.size() >= 1 &&
+             data.ownerName.size() <= 80;
+    }
+
+    function isValidLikedTrack(data) {
+      return data.userId is string &&
+             data.userId == request.auth.uid &&
+             data.trackId is string &&
+             isValidId(data.trackId) &&
+             data.genre is string &&
+             data.genre.size() >= 1 &&
+             data.genre.size() <= 40;
+    }
+
+    function isValidPlayHistory(data) {
+      return data.userId is string &&
+             data.userId == request.auth.uid &&
+             data.trackId is string &&
+             isValidId(data.trackId) &&
+             data.genre is string &&
+             data.genre.size() >= 1 &&
+             data.genre.size() <= 40 &&
+             data.mood is string &&
+             data.mood.size() >= 1 &&
+             data.mood.size() <= 40;
+    }
+
+    function isValidPublicPlaylist(data) {
+      return data.ownerId is string &&
+             isValidId(data.ownerId) &&
+             data.ownerName is string &&
+             data.ownerName.size() >= 1 &&
+             data.ownerName.size() <= 80 &&
+             data.ownerUsername is string &&
+             data.ownerUsername.size() <= 40 &&
+             data.sourcePlaylistId is string &&
+             isValidId(data.sourcePlaylistId) &&
+             data.title is string &&
+             data.title.size() >= 1 &&
+             data.title.size() <= 80 &&
+             data.description is string &&
+             data.description.size() <= 240 &&
+             data.moodTag is string &&
+             data.moodTag.size() >= 1 &&
+             data.moodTag.size() <= 40 &&
+             data.coverKey is string &&
+             data.coverKey in ['midnight_synth', 'velvet_lofi', 'acoustic_dawn', 'sonic_horizon'] &&
+             data.trackIds is list &&
+             data.trackIds.size() <= 50 &&
+             (data.trackIds.size() == 0 || data.trackIds[0] is string);
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if isOwner(userId);
+
+      allow create: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       incoming().keys().hasAll(['userId', 'displayName', 'favoriteGenres', 'preferredMood', 'offlineModeEnabled', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'displayName', 'username', 'favoriteGenres', 'preferredMood', 'offlineModeEnabled', 'createdAt', 'updatedAt']) &&
+                       incoming().createdAt is timestamp &&
+                       incoming().createdAt <= request.time &&
+                       incoming().updatedAt is timestamp &&
+                       incoming().updatedAt <= request.time &&
+                       isValidUserProfile(incoming());
+
+      allow update: if isOwner(userId) &&
+                       isValidId(userId) &&
+                       isValidUserProfile(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt is timestamp &&
+                       incoming().updatedAt <= request.time &&
+                       (
+                         incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'username', 'favoriteGenres', 'preferredMood', 'updatedAt']) ||
+                         incoming().diff(existing()).affectedKeys().hasOnly(['offlineModeEnabled', 'updatedAt'])
+                       );
+
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      match /playlists/{playlistId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(playlistId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(userId) &&
+                         isValidId(playlistId) &&
+                         incoming().keys().hasAll(['userId', 'title', 'description', 'moodTag', 'coverKey', 'trackIds', 'personalized', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'title', 'description', 'moodTag', 'coverKey', 'trackIds', 'personalized', 'createdAt', 'updatedAt']) &&
+                         incoming().createdAt is timestamp &&
+                         incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp &&
+                         incoming().updatedAt <= request.time &&
+                         isValidPlaylist(incoming());
+
+        allow update: if isOwner(userId) &&
+                         isValidId(userId) &&
+                         isValidId(playlistId) &&
+                         isValidPlaylist(incoming()) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp &&
+                         incoming().updatedAt <= request.time &&
+                         (
+                           incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'moodTag', 'coverKey', 'updatedAt']) ||
+                           incoming().diff(existing()).affectedKeys().hasOnly(['trackIds', 'updatedAt'])
+                         );
+
+        allow delete: if isOwner(userId) && isValidId(userId) && isValidId(playlistId);
+      }
+
+      match /likedTracks/{trackId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(trackId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(userId) &&
+                         isValidId(trackId) &&
+                         incoming().trackId == trackId &&
+                         incoming().keys().hasAll(['userId', 'trackId', 'genre', 'likedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'trackId', 'genre', 'likedAt']) &&
+                         incoming().likedAt is timestamp &&
+                         incoming().likedAt <= request.time &&
+                         isValidLikedTrack(incoming());
+
+        allow update: if false;
+        allow delete: if isOwner(userId) && isValidId(userId) && isValidId(trackId);
+      }
+
+      match /playHistory/{historyId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(historyId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(userId) &&
+                         isValidId(historyId) &&
+                         incoming().keys().hasAll(['userId', 'trackId', 'genre', 'mood', 'playedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'trackId', 'genre', 'mood', 'playedAt']) &&
+                         incoming().playedAt is timestamp &&
+                         incoming().playedAt <= request.time &&
+                         isValidPlayHistory(incoming());
+
+        allow update: if false;
+        allow delete: if isOwner(userId) && isValidId(userId) && isValidId(historyId);
+      }
+    }
+
+    match /userDirectory/{userId} {
+      allow get, list: if isSignedIn();
+      allow create, update: if isOwner(userId) &&
+                               isValidId(userId) &&
+                               incoming().keys().hasAll(['userId', 'username', 'displayName', 'updatedAt']) &&
+                               incoming().keys().hasOnly(['userId', 'username', 'displayName', 'updatedAt']) &&
+                               incoming().updatedAt is timestamp &&
+                               incoming().updatedAt <= request.time &&
+                               isValidDirectoryEntry(incoming(), userId);
+      allow delete: if isOwner(userId) && isValidId(userId);
+    }
+
+    match /collabInvites/{inviteCode} {
+      allow get: if isSignedIn() && isValidId(inviteCode);
+      allow list: if false;
+      allow create: if isSignedIn() &&
+                       isValidId(inviteCode) &&
+                       incoming().keys().hasAll(['inviteCode', 'playlistId', 'title', 'ownerId', 'ownerName', 'createdAt']) &&
+                       incoming().keys().hasOnly(['inviteCode', 'playlistId', 'title', 'ownerId', 'ownerName', 'createdAt']) &&
+                       incoming().createdAt is timestamp &&
+                       incoming().createdAt <= request.time &&
+                       isValidCollabInvite(incoming(), inviteCode);
+      allow update: if false;
+      allow delete: if isSignedIn() && existing().ownerId == request.auth.uid;
+    }
+
+    match /collaborativePlaylists/{playlistId} {
+      allow get, list: if isSignedIn() && (request.auth.uid in existing().collaboratorUids);
+
+      allow create: if isSignedIn() &&
+                       isValidId(playlistId) &&
+                       incoming().ownerId == request.auth.uid &&
+                       incoming().keys().hasAll(['ownerId', 'ownerName', 'title', 'description', 'moodTag', 'coverKey', 'trackIds', 'collaboratorUids', 'invitedHandles', 'inviteCode', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['ownerId', 'ownerName', 'title', 'description', 'moodTag', 'coverKey', 'trackIds', 'collaboratorUids', 'invitedHandles', 'inviteCode', 'createdAt', 'updatedAt']) &&
+                       incoming().createdAt is timestamp &&
+                       incoming().createdAt <= request.time &&
+                       incoming().updatedAt is timestamp &&
+                       incoming().updatedAt <= request.time &&
+                       isValidCollaborativePlaylist(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(playlistId) &&
+                       isValidCollaborativePlaylist(incoming()) &&
+                       incoming().ownerId == existing().ownerId &&
+                       incoming().ownerName == existing().ownerName &&
+                       incoming().inviteCode == existing().inviteCode &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt is timestamp &&
+                       incoming().updatedAt <= request.time &&
+                       (
+                         (
+                           request.auth.uid in existing().collaboratorUids &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['trackIds', 'updatedAt'])
+                         ) ||
+                         (
+                           request.auth.uid == existing().ownerId &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'moodTag', 'coverKey', 'invitedHandles', 'collaboratorUids', 'updatedAt'])
+                         ) ||
+                         (
+                           !(request.auth.uid in existing().collaboratorUids) &&
+                           request.auth.uid in incoming().collaboratorUids &&
+                           incoming().collaboratorUids.size() == existing().collaboratorUids.size() + 1 &&
+                           incoming().collaboratorUids.hasAll(existing().collaboratorUids) &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['collaboratorUids', 'updatedAt'])
+                         ) ||
+                         (
+                           request.auth.uid in existing().collaboratorUids &&
+                           request.auth.uid != existing().ownerId &&
+                           !(request.auth.uid in incoming().collaboratorUids) &&
+                           incoming().collaboratorUids.size() == existing().collaboratorUids.size() - 1 &&
+                           existing().collaboratorUids.hasAll(incoming().collaboratorUids) &&
+                           incoming().diff(existing()).affectedKeys().hasOnly(['collaboratorUids', 'updatedAt'])
+                         )
+                       );
+
+      allow delete: if isSignedIn() && existing().ownerId == request.auth.uid;
+    }
+
+    match /publicPlaylists/{playlistId} {
+      allow get, list: if isSignedIn();
+
+      allow create: if isSignedIn() &&
+                       isValidId(playlistId) &&
+                       incoming().ownerId == request.auth.uid &&
+                       incoming().keys().hasAll(['ownerId', 'ownerName', 'ownerUsername', 'sourcePlaylistId', 'title', 'description', 'moodTag', 'coverKey', 'trackIds', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['ownerId', 'ownerName', 'ownerUsername', 'sourcePlaylistId', 'title', 'description', 'moodTag', 'coverKey', 'trackIds', 'createdAt', 'updatedAt']) &&
+                       incoming().createdAt is timestamp &&
+                       incoming().createdAt <= request.time &&
+                       incoming().updatedAt is timestamp &&
+                       incoming().updatedAt <= request.time &&
+                       isValidPublicPlaylist(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(playlistId) &&
+                       existing().ownerId == request.auth.uid &&
+                       incoming().ownerId == existing().ownerId &&
+                       incoming().sourcePlaylistId == existing().sourcePlaylistId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt is timestamp &&
+                       incoming().updatedAt <= request.time &&
+                       isValidPublicPlaylist(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['ownerName', 'ownerUsername', 'title', 'description', 'moodTag', 'coverKey', 'trackIds', 'updatedAt']);
+
+      allow delete: if isSignedIn() && existing().ownerId == request.auth.uid;
+    }
+  }
+}

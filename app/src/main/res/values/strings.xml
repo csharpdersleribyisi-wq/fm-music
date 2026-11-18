@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">Sonora</string>
+    <string name="tagline_auth">Your soundscape, synced everywhere and cached offline.</string>
+    <string name="sign_in_google">Continue with Google</string>
+    <string name="nav_for_you">For You</string>
+    <string name="nav_discover">Discover</string>
+    <string name="nav_library">Library</string>
+    <string name="nav_transcribe">Transcribe</string>
+    <string name="nav_offline">Offline</string>
+    <string name="offline_mode_label">Offline Mode</string>
+    <string name="offline_mode_desc">Play only downloaded tracks from your device vault</string>
+    <string name="create_playlist">New Playlist</string>
+    <string name="create_collab_playlist">New Collab</string>
+    <string name="join_collab_playlist">Join Link</string>
+    <string name="save_mix">Save Mix</string>
+    <string name="download_all">Download All</string>
+</resources>

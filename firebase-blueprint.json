@@ -1,0 +1,416 @@
+{
+  "entities": {
+    "UserTasteProfile": {
+      "title": "UserTasteProfile",
+      "description": "Authenticated user's music taste preferences, public handle, and offline mode setting.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the profile owner."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User's display name for personalized greetings."
+        },
+        "username": {
+          "type": "string",
+          "description": "Lowercase unique-style handle for collaborative playlist invitations."
+        },
+        "favoriteGenres": {
+          "type": "array",
+          "description": "Bounded list (max 10) of preferred music genres."
+        },
+        "preferredMood": {
+          "type": "string",
+          "description": "Current preferred listening mood tag."
+        },
+        "offlineModeEnabled": {
+          "type": "boolean",
+          "description": "Whether playback is restricted to downloaded offline tracks."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when created (FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when last updated (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": [
+        "userId",
+        "displayName",
+        "favoriteGenres",
+        "preferredMood",
+        "offlineModeEnabled",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "UserDirectoryEntry": {
+      "title": "UserDirectoryEntry",
+      "description": "Public non-PII handle lookup entry for inviting friends by username.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the user."
+        },
+        "username": {
+          "type": "string",
+          "description": "Normalized lowercase username handle (a-z0-9_)."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Public display name shown in collaborative playlists."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when updated."
+        }
+      },
+      "required": [
+        "userId",
+        "username",
+        "displayName",
+        "updatedAt"
+      ]
+    },
+    "UserPlaylist": {
+      "title": "UserPlaylist",
+      "description": "User-created or saved personalized music playlist.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the playlist owner."
+        },
+        "title": {
+          "type": "string",
+          "description": "Playlist title."
+        },
+        "description": {
+          "type": "string",
+          "description": "Short description or subtitle of the playlist."
+        },
+        "moodTag": {
+          "type": "string",
+          "description": "Mood or genre tag for the playlist."
+        },
+        "coverKey": {
+          "type": "string",
+          "description": "Cover artwork identifier key."
+        },
+        "trackIds": {
+          "type": "array",
+          "description": "Ordered bounded list (max 50) of track IDs in the playlist."
+        },
+        "personalized": {
+          "type": "boolean",
+          "description": "True if generated/saved from personalized mix recommendations."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when created (FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when last updated (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": [
+        "userId",
+        "title",
+        "description",
+        "moodTag",
+        "coverKey",
+        "trackIds",
+        "personalized",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CollaborativePlaylist": {
+      "title": "CollaborativePlaylist",
+      "description": "Shared playlist where owner and invited collaborators can add, remove, and reorder tracks.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the creator."
+        },
+        "ownerName": {
+          "type": "string",
+          "description": "Display name of the playlist creator."
+        },
+        "title": {
+          "type": "string",
+          "description": "Playlist title."
+        },
+        "description": {
+          "type": "string",
+          "description": "Playlist description."
+        },
+        "moodTag": {
+          "type": "string",
+          "description": "Playlist mood tag."
+        },
+        "coverKey": {
+          "type": "string",
+          "description": "Cover artwork key."
+        },
+        "trackIds": {
+          "type": "array",
+          "description": "Ordered bounded list (max 50) of track IDs."
+        },
+        "collaboratorUids": {
+          "type": "array",
+          "description": "Bounded list (max 20) of authorized collaborator UIDs including ownerId."
+        },
+        "invitedHandles": {
+          "type": "array",
+          "description": "Bounded list (max 20) of invited friend usernames."
+        },
+        "inviteCode": {
+          "type": "string",
+          "description": "Unique shareable invite code."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when last updated."
+        }
+      },
+      "required": [
+        "ownerId",
+        "ownerName",
+        "title",
+        "description",
+        "moodTag",
+        "coverKey",
+        "trackIds",
+        "collaboratorUids",
+        "invitedHandles",
+        "inviteCode",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CollabInvite": {
+      "title": "CollabInvite",
+      "description": "Invite-code lookup record mapping a secret invite code to a collaborative playlist.",
+      "type": "object",
+      "properties": {
+        "inviteCode": {
+          "type": "string",
+          "description": "Invite code matching document ID."
+        },
+        "playlistId": {
+          "type": "string",
+          "description": "Target collaborativePlaylists document ID."
+        },
+        "title": {
+          "type": "string",
+          "description": "Playlist title."
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "Creator Firebase Auth UID."
+        },
+        "ownerName": {
+          "type": "string",
+          "description": "Creator display name."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when created."
+        }
+      },
+      "required": [
+        "inviteCode",
+        "playlistId",
+        "title",
+        "ownerId",
+        "ownerName",
+        "createdAt"
+      ]
+    },
+    "LikedTrack": {
+      "title": "LikedTrack",
+      "description": "A track favorited by the user, synced to cloud library.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the user."
+        },
+        "trackId": {
+          "type": "string",
+          "description": "Catalog track ID matching the document ID."
+        },
+        "genre": {
+          "type": "string",
+          "description": "Genre of the liked track for personalization scoring."
+        },
+        "likedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when liked (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": [
+        "userId",
+        "trackId",
+        "genre",
+        "likedAt"
+      ]
+    },
+    "PlayHistoryEntry": {
+      "title": "PlayHistoryEntry",
+      "description": "Listening history record used to tailor personalized daily mixes.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the listener."
+        },
+        "trackId": {
+          "type": "string",
+          "description": "Catalog track ID played."
+        },
+        "genre": {
+          "type": "string",
+          "description": "Track genre."
+        },
+        "mood": {
+          "type": "string",
+          "description": "Track mood."
+        },
+        "playedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when played (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": [
+        "userId",
+        "trackId",
+        "genre",
+        "mood",
+        "playedAt"
+      ]
+    },
+    "PublicPlaylist": {
+      "title": "PublicPlaylist",
+      "description": "Online community playlist published by a user and shared publicly with everyone.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the publisher."
+        },
+        "ownerName": {
+          "type": "string",
+          "description": "Public display name of the publisher."
+        },
+        "ownerUsername": {
+          "type": "string",
+          "description": "Public username handle of the publisher."
+        },
+        "sourcePlaylistId": {
+          "type": "string",
+          "description": "Original personal playlist document ID."
+        },
+        "title": {
+          "type": "string",
+          "description": "Playlist title."
+        },
+        "description": {
+          "type": "string",
+          "description": "Playlist description."
+        },
+        "moodTag": {
+          "type": "string",
+          "description": "Mood or genre tag."
+        },
+        "coverKey": {
+          "type": "string",
+          "description": "Cover artwork key."
+        },
+        "trackIds": {
+          "type": "array",
+          "description": "Ordered bounded list (max 50) of track IDs."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when published."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when last updated."
+        }
+      },
+      "required": [
+        "ownerId",
+        "ownerName",
+        "ownerUsername",
+        "sourcePlaylistId",
+        "title",
+        "description",
+        "moodTag",
+        "coverKey",
+        "trackIds",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserTasteProfile" },
+      "description": "User taste preferences and offline mode state."
+    },
+    "/userDirectory/{userId}": {
+      "schema": { "$ref": "#/entities/UserDirectoryEntry" },
+      "description": "Public username handle directory for collaborative playlist invitations."
+    },
+    "/users/{userId}/playlists/{playlistId}": {
+      "schema": { "$ref": "#/entities/UserPlaylist" },
+      "description": "User custom and saved personalized playlists."
+    },
+    "/users/{userId}/likedTracks/{trackId}": {
+      "schema": { "$ref": "#/entities/LikedTrack" },
+      "description": "User liked tracks collection."
+    },
+    "/users/{userId}/playHistory/{historyId}": {
+      "schema": { "$ref": "#/entities/PlayHistoryEntry" },
+      "description": "User play history events for personalized recommendations."
+    },
+    "/collaborativePlaylists/{playlistId}": {
+      "schema": { "$ref": "#/entities/CollaborativePlaylist" },
+      "description": "Collaborative playlists shared among invited friends."
+    },
+    "/collabInvites/{inviteCode}": {
+      "schema": { "$ref": "#/entities/CollabInvite" },
+      "description": "Secret invite-code lookup documents for joining collaborative playlists."
+    },
+    "/publicPlaylists/{playlistId}": {
+      "schema": { "$ref": "#/entities/PublicPlaylist" },
+      "description": "Online community playlists published and shared with everyone."
+    }
+  }
+}
