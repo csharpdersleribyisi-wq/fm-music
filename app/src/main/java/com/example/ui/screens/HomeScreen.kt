@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.BookmarkAdd
 import androidx.compose.material.icons.rounded.DownloadForOffline
 import androidx.compose.material.icons.rounded.Equalizer
@@ -62,6 +63,7 @@ import com.example.data.model.UiState
 import com.example.data.model.UserPlaylist
 import com.example.player.EqualizerSettings
 import com.example.player.PlaybackState
+import com.example.player.SleepTimerProtocol
 import com.example.ui.SonoraHomeData
 import com.example.ui.components.PlaylistCoverArt
 import com.example.ui.components.TrackRowItem
@@ -87,6 +89,7 @@ fun HomeScreen(
     aiInsightsState: UiState<AiForYouInsights>?,
     onRefreshAiInsights: () -> Unit,
     onOpenEqualizer: () -> Unit,
+    onOpenSleepTimer: () -> Unit,
     onOpenTasteProfile: () -> Unit,
     onToggleOfflineMode: (Boolean) -> Unit,
     onPlayTrack: (Track, List<Track>) -> Unit,
@@ -120,96 +123,27 @@ fun HomeScreen(
         ),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // Header Bar
+        // Header Bar & Quick Studio Controls
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = if (usernameHandle != null) "FOR YOU • $usernameHandle" else "FOR YOU • SONORA",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = SonoraEmerald,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Hey, $displayName",
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = SonoraTextPrimary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Surface(
-                        color = if (data.offlineModeEnabled) {
-                            SonoraTeal.copy(alpha = 0.2f)
-                        } else {
-                            SonoraSurfaceElevated
-                        },
-                        shape = RoundedCornerShape(50),
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(50))
-                            .border(
-                                1.dp,
-                                if (data.offlineModeEnabled) SonoraTeal else SonoraOutline,
-                                RoundedCornerShape(50)
-                            )
-                            .clickable { onToggleOfflineMode(!data.offlineModeEnabled) }
-                            .testTag("home_offline_pill")
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.OfflineBolt,
-                                contentDescription = "Offline mode toggle",
-                                tint = if (data.offlineModeEnabled) SonoraTeal else SonoraTextSecondary,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = if (data.offlineModeEnabled) "Offline On" else "Online",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = if (data.offlineModeEnabled) SonoraTeal else SonoraTextPrimary
-                            )
-                        }
-                    }
-
-                    IconButton(
-                        onClick = onOpenEqualizer,
-                        modifier = Modifier
-                            .minimumInteractiveComponentSize()
-                            .clip(CircleShape)
-                            .background(
-                                if (equalizerSettings.isModifiedFromFlat) {
-                                    SonoraEmerald.copy(alpha = 0.2f)
-                                } else {
-                                    SonoraSurfaceElevated
-                                }
-                            )
-                            .border(
-                                1.dp,
-                                if (equalizerSettings.isModifiedFromFlat) SonoraEmerald else SonoraOutline,
-                                CircleShape
-                            )
-                            .testTag("home_eq_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Equalizer,
-                            contentDescription = "Open equalizer",
-                            tint = if (equalizerSettings.isModifiedFromFlat) {
-                                SonoraEmerald
-                            } else {
-                                SonoraTextPrimary
-                            }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = if (usernameHandle != null) "FOR YOU • $usernameHandle" else "FOR YOU • SONORA",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = SonoraEmerald,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Hey, $displayName",
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = SonoraTextPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
 
@@ -226,6 +160,143 @@ fun HomeScreen(
                             contentDescription = "Profile and taste preferences",
                             tint = SonoraTextPrimary
                         )
+                    }
+                }
+
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    item {
+                        Surface(
+                            color = if (data.offlineModeEnabled) {
+                                SonoraTeal.copy(alpha = 0.2f)
+                            } else {
+                                SonoraSurfaceElevated
+                            },
+                            shape = RoundedCornerShape(50),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(50))
+                                .border(
+                                    1.dp,
+                                    if (data.offlineModeEnabled) SonoraTeal else SonoraOutline,
+                                    RoundedCornerShape(50)
+                                )
+                                .clickable { onToggleOfflineMode(!data.offlineModeEnabled) }
+                                .testTag("home_offline_pill")
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.OfflineBolt,
+                                    contentDescription = "Offline mode toggle",
+                                    tint = if (data.offlineModeEnabled) SonoraTeal else SonoraTextSecondary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (data.offlineModeEnabled) "Offline On" else "Online",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = if (data.offlineModeEnabled) SonoraTeal else SonoraTextPrimary
+                                )
+                            }
+                        }
+                    }
+
+                    item {
+                        Surface(
+                            color = if (equalizerSettings.isModifiedFromFlat) {
+                                SonoraEmerald.copy(alpha = 0.18f)
+                            } else {
+                                SonoraSurfaceElevated
+                            },
+                            shape = RoundedCornerShape(50),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(50))
+                                .border(
+                                    1.dp,
+                                    if (equalizerSettings.isModifiedFromFlat) SonoraEmerald else SonoraOutline,
+                                    RoundedCornerShape(50)
+                                )
+                                .clickable(onClick = onOpenEqualizer)
+                                .testTag("home_eq_button")
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Equalizer,
+                                    contentDescription = "Open equalizer",
+                                    tint = if (equalizerSettings.isModifiedFromFlat) {
+                                        SonoraEmerald
+                                    } else {
+                                        SonoraTextSecondary
+                                    },
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (equalizerSettings.enabled) {
+                                        "EQ: ${equalizerSettings.preset.label}"
+                                    } else {
+                                        "EQ: Off"
+                                    },
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = if (equalizerSettings.isModifiedFromFlat) {
+                                        SonoraEmerald
+                                    } else {
+                                        SonoraTextPrimary
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    item {
+                        val remainingMs = playbackState.sleepTimerRemainingMs
+                        val timerActive = remainingMs != null && remainingMs > 0L
+                        Surface(
+                            color = if (timerActive) {
+                                SonoraViolet.copy(alpha = 0.2f)
+                            } else {
+                                SonoraSurfaceElevated
+                            },
+                            shape = RoundedCornerShape(50),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(50))
+                                .border(
+                                    1.dp,
+                                    if (timerActive) SonoraViolet else SonoraOutline,
+                                    RoundedCornerShape(50)
+                                )
+                                .clickable(onClick = onOpenSleepTimer)
+                                .testTag("home_sleep_timer_btn")
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Bedtime,
+                                    contentDescription = "Open sleep timer",
+                                    tint = if (timerActive) SonoraViolet else SonoraTextSecondary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = if (timerActive) {
+                                        "Sleep ${SleepTimerProtocol.formatCountdown(remainingMs!!)}"
+                                    } else {
+                                        "Sleep Timer"
+                                    },
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = if (timerActive) SonoraViolet else SonoraTextPrimary
+                                )
+                            }
+                        }
                     }
                 }
             }

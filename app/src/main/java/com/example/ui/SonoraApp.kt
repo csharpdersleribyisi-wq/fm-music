@@ -86,6 +86,7 @@ import com.example.ui.components.InviteFriendDialog
 import com.example.ui.components.JoinCollaborativePlaylistDialog
 import com.example.ui.components.MiniPlayerBar
 import com.example.ui.components.NowPlayingSheet
+import com.example.ui.components.SleepTimerSheet
 import com.example.ui.components.SocialShareSheet
 import com.example.ui.components.SocialShareTarget
 import com.example.ui.components.TastePreferencesSheet
@@ -196,6 +197,7 @@ fun SonoraApp(
 
     var showNowPlaying by remember { mutableStateOf(false) }
     var showEqualizerSheet by remember { mutableStateOf(false) }
+    var showSleepTimerSheet by remember { mutableStateOf(false) }
     var showCreatePlaylistDialog by remember { mutableStateOf(false) }
     var showCreateCollabDialog by remember { mutableStateOf(false) }
     var showJoinCollabDialog by remember { mutableStateOf<String?>(null) }
@@ -424,6 +426,7 @@ fun SonoraApp(
                                                 aiInsightsState = aiInsightsState,
                                                 onRefreshAiInsights = { viewModel.refreshAiTasteInsights() },
                                                 onOpenEqualizer = { showEqualizerSheet = true },
+                                                onOpenSleepTimer = { showSleepTimerSheet = true },
                                                 onOpenTasteProfile = { showTasteSheet = true },
                                                 onToggleOfflineMode = { viewModel.toggleOfflineMode(it) },
                                                 onPlayTrack = { t, q -> viewModel.playTrack(t, q) },
@@ -721,6 +724,7 @@ fun SonoraApp(
                                         navigateToTab(TranscribeRoute)
                                     },
                                     onOpenEqualizerClick = { showEqualizerSheet = true },
+                                    onOpenSleepTimerClick = { showSleepTimerSheet = true },
                                     onSelectQueueTrack = { viewModel.playTrack(it, playbackState.queue) }
                                 )
                             }
@@ -736,6 +740,20 @@ fun SonoraApp(
                                     },
                                     onUpdatePreamp = { viewModel.setEqualizerPreamp(it) },
                                     onReset = { viewModel.resetEqualizer() }
+                                )
+                            }
+
+                            if (showSleepTimerSheet) {
+                                SleepTimerSheet(
+                                    playbackState = playbackState,
+                                    onDismiss = { showSleepTimerSheet = false },
+                                    onStartTimer = { mins, fade ->
+                                        viewModel.startSleepTimer(mins, fade)
+                                    },
+                                    onExtendTimer = { extraMins ->
+                                        viewModel.extendSleepTimer(extraMins)
+                                    },
+                                    onCancelTimer = { viewModel.cancelSleepTimer() }
                                 )
                             }
 

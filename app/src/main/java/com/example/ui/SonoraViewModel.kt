@@ -272,6 +272,14 @@ class SonoraViewModel(
 
     fun resetEqualizer() = playerController.resetEqualizer()
 
+    fun startSleepTimer(minutes: Int, fadeOut: Boolean = true) =
+        playerController.startSleepTimer(minutes, fadeOut)
+
+    fun extendSleepTimer(extraMinutes: Int = 5) =
+        playerController.extendSleepTimer(extraMinutes)
+
+    fun cancelSleepTimer() = playerController.cancelSleepTimer()
+
     fun refreshAiTasteInsights() {
         val data = (homeState.value as? UiState.Success)?.data ?: return
         viewModelScope.launch {

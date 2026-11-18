@@ -32,6 +32,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.DownloadForOffline
@@ -90,6 +91,7 @@ import com.example.data.model.OfflineDownloadStatus
 import com.example.data.model.Track
 import com.example.player.EqualizerSettings
 import com.example.player.PlaybackState
+import com.example.player.SleepTimerProtocol
 import com.example.ui.theme.SonoraBg
 import com.example.ui.theme.SonoraEmerald
 import com.example.ui.theme.SonoraOutline
@@ -444,8 +446,35 @@ fun MiniPlayerBar(
                             style = MaterialTheme.typography.bodySmall,
                             color = SonoraTextSecondary,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
                         )
+                        val sleepMs = playbackState.sleepTimerRemainingMs
+                        if (sleepMs != null && sleepMs > 0L) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Surface(
+                                color = SonoraViolet.copy(alpha = 0.2f),
+                                shape = RoundedCornerShape(50)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Bedtime,
+                                        contentDescription = "Sleep timer active",
+                                        tint = SonoraViolet,
+                                        modifier = Modifier.size(10.dp)
+                                    )
+                                    Text(
+                                        text = SleepTimerProtocol.formatCountdown(sleepMs),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = SonoraViolet
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -512,6 +541,7 @@ fun NowPlayingSheet(
     onShareTrackClick: () -> Unit,
     onTranscribeTrackClick: () -> Unit,
     onOpenEqualizerClick: () -> Unit,
+    onOpenSleepTimerClick: () -> Unit,
     onSelectQueueTrack: (Track) -> Unit
 ) {
     val track = playbackState.currentTrack ?: return
@@ -581,6 +611,22 @@ fun NowPlayingSheet(
                     }
 
                     Row {
+                        IconButton(
+                            onClick = onOpenSleepTimerClick,
+                            modifier = Modifier
+                                .minimumInteractiveComponentSize()
+                                .testTag("now_playing_sleep_timer_btn")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Bedtime,
+                                contentDescription = "Open sleep timer",
+                                tint = if ((playbackState.sleepTimerRemainingMs ?: 0L) > 0L) {
+                                    SonoraViolet
+                                } else {
+                                    SonoraTextPrimary
+                                }
+                            )
+                        }
                         IconButton(
                             onClick = onOpenEqualizerClick,
                             modifier = Modifier

@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.net.Uri
 import android.os.Bundle
+import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -37,7 +38,10 @@ data class PlaybackState(
     val shuffleEnabled: Boolean = false,
     val repeatMode: Int = Player.REPEAT_MODE_ALL,
     val playingFromOfflineVault: Boolean = false,
-    val statusNotice: String? = null
+    val statusNotice: String? = null,
+    val sleepTimerRemainingMs: Long? = null,
+    val sleepTimerTotalMs: Long? = null,
+    val sleepTimerFadeOut: Boolean = true
 )
 
 class SonoraPlayerController(
@@ -51,6 +55,8 @@ class SonoraPlayerController(
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private var mediaController: MediaController? = null
     private var positionTickerJob: Job? = null
+    private var sleepTimerJob: Job? = null
+    private var sleepTimerEndElapsedMs: Long = 0L
 
     private val _state = MutableStateFlow(PlaybackState())
     val state: StateFlow<PlaybackState> = _state.asStateFlow()
@@ -114,6 +120,10 @@ class SonoraPlayerController(
                 controller.repeatMode = _state.value.repeatMode
                 controller.shuffleModeEnabled = _state.value.shuffleEnabled
                 pushEqualizerToService(controller, _equalizerState.value)
+                val remaining = _state.value.sleepTimerRemainingMs
+                if (remaining != null && remaining > 0L) {
+                    pushSleepTimerToService(controller, remaining, _state.value.sleepTimerFadeOut)
+                }
             } catch (_: Exception) {
                 // Service may not be ready in test environments
             }
@@ -323,6 +333,101 @@ class SonoraPlayerController(
         }
     }
 
+    fun startSleepTimer(durationMinutes: Int, fadeOut: Boolean = true) {
+        val safeMinutes = durationMinutes.coerceIn(1, 240)
+        startSleepTimerMs(
+            durationMs = safeMinutes * 60_000L,
+            fadeOut = fadeOut,
+            notice = "Sleep timer set for $safeMinutes min"
+        )
+    }
+
+    fun startSleepTimerMs(
+        durationMs: Long,
+        fadeOut: Boolean = true,
+        notice: String? = null
+    ) {
+        val safeMs = durationMs.coerceAtLeast(1_000L)
+        sleepTimerJob?.cancel()
+        sleepTimerEndElapsedMs = SystemClock.elapsedRealtime() + safeMs
+
+        _state.update {
+            it.copy(
+                sleepTimerRemainingMs = safeMs,
+                sleepTimerTotalMs = safeMs,
+                sleepTimerFadeOut = fadeOut,
+                statusNotice = notice ?: "Sleep timer set for ${SleepTimerProtocol.formatDurationSummary(safeMs)}"
+            )
+        }
+
+        mediaController?.let { ctrl ->
+            pushSleepTimerToService(ctrl, safeMs, fadeOut)
+        }
+
+        sleepTimerJob = scope.launch {
+            while (isActive) {
+                val remaining = sleepTimerEndElapsedMs - SystemClock.elapsedRealtime()
+                if (remaining <= 0L) {
+                    mediaController?.pause()
+                    _state.update {
+                        it.copy(
+                            sleepTimerRemainingMs = null,
+                            sleepTimerTotalMs = null,
+                            statusNotice = "Sleep timer ended — playback paused"
+                        )
+                    }
+                    break
+                }
+                _state.update { it.copy(sleepTimerRemainingMs = remaining) }
+                delay(250L)
+            }
+        }
+    }
+
+    fun extendSleepTimer(extraMinutes: Int = 5) {
+        val currentRemaining = _state.value.sleepTimerRemainingMs ?: return
+        val addedMs = extraMinutes.coerceAtLeast(1) * 60_000L
+        startSleepTimerMs(
+            durationMs = currentRemaining + addedMs,
+            fadeOut = _state.value.sleepTimerFadeOut,
+            notice = "Added $extraMinutes min to sleep timer"
+        )
+    }
+
+    fun cancelSleepTimer() {
+        sleepTimerJob?.cancel()
+        sleepTimerJob = null
+        sleepTimerEndElapsedMs = 0L
+        mediaController?.let { ctrl ->
+            runCatching {
+                ctrl.sendCustomCommand(
+                    SessionCommand(SleepTimerProtocol.COMMAND_CANCEL_SLEEP_TIMER, Bundle.EMPTY),
+                    Bundle.EMPTY
+                )
+            }
+        }
+        _state.update {
+            it.copy(
+                sleepTimerRemainingMs = null,
+                sleepTimerTotalMs = null,
+                statusNotice = "Sleep timer cancelled"
+            )
+        }
+    }
+
+    private fun pushSleepTimerToService(
+        controller: MediaController,
+        durationMs: Long,
+        fadeOut: Boolean
+    ) {
+        runCatching {
+            controller.sendCustomCommand(
+                SessionCommand(SleepTimerProtocol.COMMAND_SET_SLEEP_TIMER, Bundle.EMPTY),
+                SleepTimerProtocol.buildSetBundle(durationMs, fadeOut)
+            )
+        }
+    }
+
     private fun startPositionTicker() {
         if (positionTickerJob?.isActive == true) return
         positionTickerJob = scope.launch {
@@ -348,6 +453,7 @@ class SonoraPlayerController(
 
     fun release() {
         stopPositionTicker()
+        sleepTimerJob?.cancel()
         mediaController?.removeListener(playerListener)
         controllerFuture?.let { MediaController.releaseFuture(it) }
         mediaController = null
