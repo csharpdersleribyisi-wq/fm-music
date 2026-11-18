@@ -14,4 +14,5 @@
     <string name="join_collab_playlist">Join Link</string>
     <string name="save_mix">Save Mix</string>
     <string name="download_all">Download All</string>
+    <string name="library_search_placeholder">Search tracks, artists, or albums</string>
 </resources>

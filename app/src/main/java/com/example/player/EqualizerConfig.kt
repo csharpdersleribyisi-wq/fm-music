@@ -28,16 +28,22 @@ enum class EqualizerPreset(
         bandGainsDb = listOf(7.5f, 5.0f, 0.5f, -1.0f, 0.5f),
         preampDb = -1.5f
     ),
-    CLASSICAL(
-        label = "Classical",
-        description = "Balanced acoustic resonance & air",
-        bandGainsDb = listOf(4.5f, 3.0f, -1.5f, 2.5f, 5.0f),
-        preampDb = -0.5f
-    ),
     JAZZ(
         label = "Jazz",
         description = "Smooth brass presence & warm upright",
         bandGainsDb = listOf(3.5f, 2.5f, -2.0f, 3.0f, 4.0f),
+        preampDb = -0.5f
+    ),
+    VOCAL_BOOST(
+        label = "Vocal",
+        description = "Focused midrange clarity for vocals",
+        bandGainsDb = listOf(-2.5f, -1.0f, 5.5f, 4.5f, 1.5f),
+        preampDb = -0.5f
+    ),
+    CLASSICAL(
+        label = "Classical",
+        description = "Balanced acoustic resonance & air",
+        bandGainsDb = listOf(4.5f, 3.0f, -1.5f, 2.5f, 5.0f),
         preampDb = -0.5f
     ),
     ROCK(
@@ -50,12 +56,6 @@ enum class EqualizerPreset(
         label = "Pop",
         description = "Forward vocals & radio sheen",
         bandGainsDb = listOf(-1.5f, 2.5f, 4.5f, 3.5f, -1.0f),
-        preampDb = -0.5f
-    ),
-    VOCAL_BOOST(
-        label = "Vocal Boost",
-        description = "Focused midrange clarity for lyrics",
-        bandGainsDb = listOf(-2.5f, -1.0f, 5.5f, 4.5f, 1.5f),
         preampDb = -0.5f
     ),
     ELECTRONIC(

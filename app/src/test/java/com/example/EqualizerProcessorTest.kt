@@ -115,5 +115,43 @@ class EqualizerProcessorTest {
 
         val disabledJazz = jazz.copy(enabled = false)
         assertFalse(disabledJazz.isModifiedFromFlat)
+
+        assertEquals("Vocal", EqualizerPreset.VOCAL_BOOST.label)
+        assertEquals("Bass Boost", EqualizerPreset.BASS_BOOST.label)
+        assertEquals("Jazz", EqualizerPreset.JAZZ.label)
+        assertTrue(
+            "Vocal preset should boost midrange (910 Hz & 3.6 kHz)",
+            EqualizerPreset.VOCAL_BOOST.bandGainsDb[2] > 4f &&
+                EqualizerPreset.VOCAL_BOOST.bandGainsDb[3] > 3f
+        )
+    }
+
+    @Test
+    fun softLimiterPreventsDigitalOverflowUnderMaxBoost() {
+        val processor = EqualizerAudioProcessor(
+            EqualizerSettings(
+                enabled = true,
+                preset = EqualizerPreset.CUSTOM,
+                bandGainsDb = listOf(12f, 12f, 12f, 12f, 12f),
+                preampDb = 6f
+            )
+        )
+        val format = AudioProcessor.AudioFormat(44100, 1, C.ENCODING_PCM_FLOAT)
+        processor.configure(format)
+        processor.flush()
+
+        val sampleCount = 512
+        val input = ByteBuffer.allocateDirect(sampleCount * 4).order(ByteOrder.LITTLE_ENDIAN)
+        for (i in 0 until sampleCount) {
+            input.putFloat((sin(2.0 * PI * 440.0 * i / 44100.0) * 0.9f).toFloat())
+        }
+        input.flip()
+
+        processor.queueInput(input)
+        val out = processor.output.order(ByteOrder.LITTLE_ENDIAN)
+        while (out.hasRemaining()) {
+            val s = out.float
+            assertTrue("Expected soft-limited sample within [-1, 1], got $s", s in -1.0f..1.0f)
+        }
     }
 }

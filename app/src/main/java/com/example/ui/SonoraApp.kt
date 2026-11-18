@@ -180,6 +180,7 @@ fun SonoraApp(
     val searchQuery by viewModel.searchQuery.collectAsStateWithLifecycle()
     val selectedGenre by viewModel.selectedGenreFilter.collectAsStateWithLifecycle()
     val libraryFilter by viewModel.libraryFilter.collectAsStateWithLifecycle()
+    val librarySearchQuery by viewModel.librarySearchQuery.collectAsStateWithLifecycle()
     val aiInsightsState by viewModel.aiInsightsState.collectAsStateWithLifecycle()
 
     val transcribeRunning by viewModel.transcribeRunning.collectAsStateWithLifecycle()
@@ -275,7 +276,8 @@ fun SonoraApp(
                                 isLiked = playbackState.currentTrack!!.id in likedIds,
                                 onExpandClick = { showNowPlaying = true },
                                 onTogglePlayPause = { viewModel.playerController.togglePlayPause() },
-                                onToggleLike = { viewModel.toggleLike(playbackState.currentTrack!!) }
+                                onToggleLike = { viewModel.toggleLike(playbackState.currentTrack!!) },
+                                equalizerSettings = equalizerState
                             )
                         }
                         NavigationBar(
@@ -503,6 +505,8 @@ fun SonoraApp(
                                                 data = data,
                                                 playbackState = playbackState,
                                                 activeFilter = libraryFilter,
+                                                searchQuery = librarySearchQuery,
+                                                onSearchQueryChange = { viewModel.setLibrarySearchQuery(it) },
                                                 onSelectFilter = { viewModel.setLibraryFilter(it) },
                                                 onCreatePlaylistClick = {
                                                     prefillTrackForNewPlaylist = null
@@ -522,6 +526,11 @@ fun SonoraApp(
                                                 onOpenCollabPlaylist = { collab ->
                                                     navController.navigate(
                                                         CollectionDetailRoute(kind = "collab", targetId = collab.id)
+                                                    )
+                                                },
+                                                onOpenAlbum = { album ->
+                                                    navController.navigate(
+                                                        CollectionDetailRoute(kind = "album", targetId = album.title)
                                                     )
                                                 },
                                                 onOpenLikedSongs = {
@@ -692,7 +701,8 @@ fun SonoraApp(
                                             isLiked = playbackState.currentTrack!!.id in data.likedTrackIds,
                                             onExpandClick = { showNowPlaying = true },
                                             onTogglePlayPause = { viewModel.playerController.togglePlayPause() },
-                                            onToggleLike = { viewModel.toggleLike(playbackState.currentTrack!!) }
+                                            onToggleLike = { viewModel.toggleLike(playbackState.currentTrack!!) },
+                                            equalizerSettings = equalizerState
                                         )
                                     }
                                 }

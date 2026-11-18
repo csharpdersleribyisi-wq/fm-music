@@ -388,7 +388,8 @@ fun MiniPlayerBar(
     onExpandClick: () -> Unit,
     onTogglePlayPause: () -> Unit,
     onToggleLike: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    equalizerSettings: EqualizerSettings = EqualizerSettings()
 ) {
     val track = playbackState.currentTrack ?: return
     val progress = if (playbackState.durationMs > 0L) {
@@ -449,6 +450,32 @@ fun MiniPlayerBar(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f, fill = false)
                         )
+                        if (equalizerSettings.isModifiedFromFlat) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Surface(
+                                color = SonoraEmerald.copy(alpha = 0.16f),
+                                shape = RoundedCornerShape(50)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Equalizer,
+                                        contentDescription = "Equalizer ${equalizerSettings.preset.label} active",
+                                        tint = SonoraEmerald,
+                                        modifier = Modifier.size(10.dp)
+                                    )
+                                    Text(
+                                        text = equalizerSettings.preset.label,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = SonoraEmerald,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                        }
                         val sleepMs = playbackState.sleepTimerRemainingMs
                         if (sleepMs != null && sleepMs > 0L) {
                             Spacer(modifier = Modifier.width(6.dp))

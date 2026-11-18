@@ -13,8 +13,10 @@ import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.roundToInt
+import kotlin.math.sign
 import kotlin.math.sin
 import kotlin.math.sqrt
+import kotlin.math.tanh
 
 /**
  * Real-time 5-band parametric/shelving equalizer implemented as a Media3 [BaseAudioProcessor].
@@ -153,7 +155,15 @@ class EqualizerAudioProcessor(
             bandZ2[channel] = c.b2 * sample - c.a2 * y
             sample = y
         }
-        return sample.coerceIn(-1.0, 1.0)
+        return softLimitSample(sample)
+    }
+
+    private fun softLimitSample(sample: Double): Double {
+        val magnitude = abs(sample)
+        if (magnitude <= LIMITER_THRESHOLD) return sample
+        val headroom = 1.0 - LIMITER_THRESHOLD
+        val compressed = LIMITER_THRESHOLD + headroom * tanh((magnitude - LIMITER_THRESHOLD) / headroom)
+        return (sign(sample) * compressed).coerceIn(-1.0, 1.0)
     }
 
     private fun clearDelayLines() {
@@ -262,5 +272,6 @@ class EqualizerAudioProcessor(
         private const val BAND_COUNT = 5
         private const val MAX_CHANNELS = 8
         private const val SQRT_HALF = 0.7071067811865476
+        private const val LIMITER_THRESHOLD = 0.88
     }
 }

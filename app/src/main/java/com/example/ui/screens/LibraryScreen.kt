@@ -17,18 +17,24 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Album
 import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.DownloadForOffline
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.GroupAdd
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.OfflinePin
+import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Public
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.SearchOff
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -38,14 +44,18 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -54,6 +64,7 @@ import androidx.compose.ui.unit.dp
 import com.example.R
 import com.example.data.catalog.MusicCatalog
 import com.example.data.local.status
+import com.example.data.model.AlbumInfo
 import com.example.data.model.CollaborativePlaylist
 import com.example.data.model.OfflineDownloadStatus
 import com.example.data.model.Track
@@ -70,6 +81,7 @@ import com.example.ui.theme.SonoraOutline
 import com.example.ui.theme.SonoraSurface
 import com.example.ui.theme.SonoraSurfaceElevated
 import com.example.ui.theme.SonoraTeal
+import com.example.ui.theme.SonoraTextMuted
 import com.example.ui.theme.SonoraTextPrimary
 import com.example.ui.theme.SonoraTextSecondary
 import com.example.ui.theme.SonoraViolet
@@ -80,12 +92,15 @@ fun LibraryScreen(
     data: SonoraHomeData,
     playbackState: PlaybackState,
     activeFilter: LibraryFilter,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
     onSelectFilter: (LibraryFilter) -> Unit,
     onCreatePlaylistClick: () -> Unit,
     onCreateCollabPlaylistClick: () -> Unit,
     onJoinCollabClick: () -> Unit,
     onOpenPlaylist: (UserPlaylist) -> Unit,
     onOpenCollabPlaylist: (CollaborativePlaylist) -> Unit,
+    onOpenAlbum: (AlbumInfo) -> Unit,
     onOpenLikedSongs: () -> Unit,
     onPlayTrack: (Track, List<Track>) -> Unit,
     onToggleLike: (Track) -> Unit,
@@ -99,7 +114,13 @@ fun LibraryScreen(
     onTogglePublishPlaylist: (UserPlaylist) -> Unit,
     bottomContentPadding: PaddingValues = PaddingValues(bottom = 16.dp)
 ) {
-    val likedTracks = MusicCatalog.tracks.filter { it.id in data.likedTrackIds }
+    val likedTracks = remember(data.likedTrackIds) {
+        MusicCatalog.tracks.filter { it.id in data.likedTrackIds }
+    }
+    val isSearching = searchQuery.isNotBlank()
+    val searchResults = remember(searchQuery, activeFilter, data) {
+        LibrarySearchEngine.search(searchQuery, activeFilter, data)
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -144,43 +165,94 @@ fun LibraryScreen(
                     }
                 }
 
-                // Collaborative Playlist Action Bar
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = onCreateCollabPlaylistClick,
-                        shape = RoundedCornerShape(50),
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("library_create_collab_btn")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.GroupAdd,
-                            contentDescription = "New collaborative playlist",
-                            tint = SonoraViolet,
-                            modifier = Modifier.size(18.dp)
+                // Library Search Bar at the top of Music Library
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = onSearchQueryChange,
+                    placeholder = {
+                        Text(
+                            text = stringResource(R.string.library_search_placeholder),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(stringResource(R.string.create_collab_playlist), color = SonoraViolet)
-                    }
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Rounded.Search,
+                            contentDescription = "Search library",
+                            tint = if (isSearching) SonoraEmerald else SonoraTextSecondary
+                        )
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(
+                                onClick = { onSearchQueryChange("") },
+                                modifier = Modifier
+                                    .minimumInteractiveComponentSize()
+                                    .testTag("library_search_clear")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Clear,
+                                    contentDescription = "Clear library search",
+                                    tint = SonoraTextSecondary
+                                )
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = SonoraSurfaceElevated,
+                        unfocusedContainerColor = SonoraSurface,
+                        focusedBorderColor = SonoraEmerald,
+                        unfocusedBorderColor = SonoraOutline,
+                        focusedTextColor = SonoraTextPrimary,
+                        unfocusedTextColor = SonoraTextPrimary
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("library_search_input")
+                )
 
-                    OutlinedButton(
-                        onClick = onJoinCollabClick,
-                        shape = RoundedCornerShape(50),
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("library_join_collab_btn")
+                // Collaborative Playlist Action Bar (when not actively searching)
+                if (!isSearching) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Link,
-                            contentDescription = "Join by invite link",
-                            tint = SonoraTeal,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(stringResource(R.string.join_collab_playlist), color = SonoraTeal)
+                        OutlinedButton(
+                            onClick = onCreateCollabPlaylistClick,
+                            shape = RoundedCornerShape(50),
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("library_create_collab_btn")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.GroupAdd,
+                                contentDescription = "New collaborative playlist",
+                                tint = SonoraViolet,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(stringResource(R.string.create_collab_playlist), color = SonoraViolet)
+                        }
+
+                        OutlinedButton(
+                            onClick = onJoinCollabClick,
+                            shape = RoundedCornerShape(50),
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("library_join_collab_btn")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Link,
+                                contentDescription = "Join by invite link",
+                                tint = SonoraTeal,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(stringResource(R.string.join_collab_playlist), color = SonoraTeal)
+                        }
                     }
                 }
             }
@@ -210,6 +282,345 @@ fun LibraryScreen(
                 }
             }
         }
+
+        if (isSearching) {
+            if (searchResults.isEmpty) {
+                item {
+                    Surface(
+                        color = SonoraSurface,
+                        shape = RoundedCornerShape(18.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.dp, SonoraOutline, RoundedCornerShape(18.dp))
+                            .testTag("library_search_empty")
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.SearchOff,
+                                contentDescription = "No search results",
+                                tint = SonoraTextMuted,
+                                modifier = Modifier.size(38.dp)
+                            )
+                            Text(
+                                text = "No matches for \"${searchResults.query}\"",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = SonoraTextPrimary
+                            )
+                            Text(
+                                text = "Try searching another track title, artist name, album, or switch your library filter.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = SonoraTextSecondary
+                            )
+                            OutlinedButton(
+                                onClick = { onSearchQueryChange("") },
+                                shape = RoundedCornerShape(50),
+                                modifier = Modifier.testTag("library_search_reset_btn")
+                            ) {
+                                Text("Clear Search", color = SonoraEmerald)
+                            }
+                        }
+                    }
+                }
+            } else {
+                if (searchResults.artists.isNotEmpty()) {
+                    item {
+                        Text(
+                            text = "Artists (${searchResults.artists.size})",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = SonoraTeal
+                        )
+                    }
+                    item {
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            items(searchResults.artists, key = { it.artist }) { artistGroup ->
+                                val artistAccent = Color(artistGroup.accentHex)
+                                Surface(
+                                    color = SonoraSurfaceElevated,
+                                    shape = RoundedCornerShape(16.dp),
+                                    modifier = Modifier
+                                        .width(190.dp)
+                                        .border(
+                                            1.dp,
+                                            artistAccent.copy(alpha = 0.4f),
+                                            RoundedCornerShape(16.dp)
+                                        )
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .clickable {
+                                            onPlayTrack(artistGroup.tracks.first(), artistGroup.tracks)
+                                        }
+                                        .testTag("library_search_artist_${artistGroup.artist}")
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(46.dp)
+                                                .clip(CircleShape)
+                                                .background(artistAccent.copy(alpha = 0.2f))
+                                                .border(1.dp, artistAccent, CircleShape),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Rounded.Person,
+                                                contentDescription = artistGroup.artist,
+                                                tint = artistAccent,
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.width(10.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = artistGroup.artist,
+                                                style = MaterialTheme.typography.titleSmall,
+                                                color = SonoraTextPrimary,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Text(
+                                                text = "${artistGroup.tracks.size} ${if (artistGroup.tracks.size == 1) "track" else "tracks"} • ${artistGroup.genre}",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = SonoraTextSecondary,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (searchResults.albums.isNotEmpty()) {
+                    item {
+                        Text(
+                            text = "Albums (${searchResults.albums.size})",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = SonoraViolet
+                        )
+                    }
+                    items(searchResults.albums, key = { "album_${it.title}" }) { album ->
+                        Surface(
+                            color = SonoraSurface,
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(1.dp, SonoraOutline, RoundedCornerShape(16.dp))
+                                .clip(RoundedCornerShape(16.dp))
+                                .clickable { onOpenAlbum(album) }
+                                .testTag("library_search_album_${album.title}")
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                PlaylistCoverArt(
+                                    coverKey = album.coverKey,
+                                    contentDescription = album.title,
+                                    modifier = Modifier
+                                        .size(56.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Album,
+                                            contentDescription = "Album",
+                                            tint = SonoraViolet,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(5.dp))
+                                        Text(
+                                            text = album.title,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            color = SonoraTextPrimary,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                    Text(
+                                        text = "${album.artist} • ${album.tracks.size} tracks",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = SonoraTextSecondary,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                                if (album.tracks.isNotEmpty()) {
+                                    IconButton(
+                                        onClick = { onPlayTrack(album.tracks.first(), album.tracks) },
+                                        modifier = Modifier.minimumInteractiveComponentSize()
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.PlayArrow,
+                                            contentDescription = "Play ${album.title}",
+                                            tint = SonoraEmerald,
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (searchResults.tracks.isNotEmpty()) {
+                    item {
+                        Text(
+                            text = "Tracks (${searchResults.tracks.size})",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = SonoraEmerald
+                        )
+                    }
+                    items(searchResults.tracks, key = { "search_track_${it.id}" }) { track ->
+                        TrackRowItem(
+                            track = track,
+                            isPlayingCurrent = playbackState.currentTrack?.id == track.id,
+                            isLiked = track.id in data.likedTrackIds,
+                            offlineEntity = data.offlineMap[track.id],
+                            offlineModeEnabled = data.offlineModeEnabled,
+                            onPlayClick = { onPlayTrack(track, searchResults.tracks) },
+                            onToggleLike = { onToggleLike(track) },
+                            onDownloadClick = { onDownloadTrack(track) },
+                            onRemoveDownloadClick = { onRemoveDownload(track) },
+                            onAddToPlaylistClick = { onAddToPlaylist(track) },
+                            onShareClick = { onShareTrack(track) }
+                        )
+                    }
+                }
+
+                if (searchResults.collaborativePlaylists.isNotEmpty()) {
+                    item {
+                        Text(
+                            text = "Collaborative Playlists (${searchResults.collaborativePlaylists.size})",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = SonoraViolet
+                        )
+                    }
+                    items(searchResults.collaborativePlaylists, key = { "search_collab_${it.id}" }) { collab ->
+                        val tracks = MusicCatalog.resolveTracks(collab.trackIds)
+                        Surface(
+                            color = SonoraSurface,
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(1.dp, SonoraViolet.copy(alpha = 0.45f), RoundedCornerShape(16.dp))
+                                .clip(RoundedCornerShape(16.dp))
+                                .clickable { onOpenCollabPlaylist(collab) }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                PlaylistCoverArt(
+                                    coverKey = collab.coverKey,
+                                    contentDescription = collab.title,
+                                    modifier = Modifier
+                                        .size(52.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = collab.title,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = SonoraTextPrimary,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        text = "${tracks.size} tracks • Collab by ${collab.ownerName}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = SonoraTextSecondary
+                                    )
+                                }
+                                if (tracks.isNotEmpty()) {
+                                    IconButton(
+                                        onClick = { onPlayTrack(tracks.first(), tracks) },
+                                        modifier = Modifier.minimumInteractiveComponentSize()
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.PlayArrow,
+                                            contentDescription = "Play ${collab.title}",
+                                            tint = SonoraEmerald
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (searchResults.playlists.isNotEmpty()) {
+                    item {
+                        Text(
+                            text = "Personal Playlists (${searchResults.playlists.size})",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = SonoraTextPrimary
+                        )
+                    }
+                    items(searchResults.playlists, key = { "search_pl_${it.id}" }) { playlist ->
+                        val tracks = MusicCatalog.resolveTracks(playlist.trackIds)
+                        Surface(
+                            color = SonoraSurface,
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(1.dp, SonoraOutline, RoundedCornerShape(16.dp))
+                                .clip(RoundedCornerShape(16.dp))
+                                .clickable { onOpenPlaylist(playlist) }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                PlaylistCoverArt(
+                                    coverKey = playlist.coverKey,
+                                    contentDescription = playlist.title,
+                                    modifier = Modifier
+                                        .size(52.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = playlist.title,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = SonoraTextPrimary,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        text = "${tracks.size} tracks • ${playlist.moodTag}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = SonoraTextSecondary
+                                    )
+                                }
+                                if (tracks.isNotEmpty()) {
+                                    IconButton(
+                                        onClick = { onPlayTrack(tracks.first(), tracks) },
+                                        modifier = Modifier.minimumInteractiveComponentSize()
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.PlayArrow,
+                                            contentDescription = "Play ${playlist.title}",
+                                            tint = SonoraEmerald
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
 
         // Liked Songs Card
         if (activeFilter == LibraryFilter.ALL || activeFilter == LibraryFilter.LIKED) {
@@ -654,6 +1065,7 @@ fun LibraryScreen(
                     onShareClick = { onShareTrack(track) }
                 )
             }
+        }
         }
     }
 }

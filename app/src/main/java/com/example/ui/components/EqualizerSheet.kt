@@ -28,7 +28,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Equalizer
+import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -239,6 +241,21 @@ fun EqualizerSheet(
                             .fillMaxWidth()
                             .height(110.dp)
                     )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        EqualizerSettings.BAND_SPECS.forEach { spec ->
+                            Text(
+                                text = spec.label.replace(" Hz", "").replace(" kHz", "k"),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = SonoraTextMuted
+                            )
+                        }
+                    }
                 }
             }
 
@@ -249,11 +266,16 @@ fun EqualizerSheet(
                     style = MaterialTheme.typography.labelLarge,
                     color = SonoraTextSecondary
                 )
+                val visiblePresets = remember(settings.preset) {
+                    EqualizerPreset.entries.filter {
+                        it != EqualizerPreset.CUSTOM || settings.preset == EqualizerPreset.CUSTOM
+                    }
+                }
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(end = 8.dp)
                 ) {
-                    items(EqualizerPreset.entries, key = { it.name }) { preset ->
+                    items(visiblePresets, key = { it.name }) { preset ->
                         val selected = settings.preset == preset
                         Surface(
                             color = if (selected) {
@@ -269,10 +291,8 @@ fun EqualizerSheet(
                                     RoundedCornerShape(50)
                                 )
                                 .clip(RoundedCornerShape(50))
-                                .clickable {
-                                    if (preset != EqualizerPreset.CUSTOM) {
-                                        onSelectPreset(preset)
-                                    }
+                                .clickable(enabled = preset != EqualizerPreset.CUSTOM) {
+                                    onSelectPreset(preset)
                                 }
                                 .testTag("eq_preset_${preset.name.lowercase()}")
                         ) {
@@ -366,13 +386,36 @@ fun EqualizerSheet(
                             style = MaterialTheme.typography.titleSmall,
                             color = SonoraTextPrimary
                         )
-                        val preampFormatted = formatDbValue(settings.preampDb)
-                        Text(
-                            text = "$preampFormatted dB",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = if (settings.preampDb > 0.05f) SonoraAmber else SonoraTeal,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            if (kotlin.math.abs(settings.preampDb) > 0.05f && settings.enabled) {
+                                Surface(
+                                    color = SonoraSurface,
+                                    shape = RoundedCornerShape(50),
+                                    modifier = Modifier
+                                        .border(1.dp, SonoraOutline, RoundedCornerShape(50))
+                                        .clip(RoundedCornerShape(50))
+                                        .clickable { onUpdatePreamp(0f) }
+                                        .testTag("eq_preamp_zero_btn")
+                                ) {
+                                    Text(
+                                        text = "0 dB",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = SonoraTextSecondary,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+                            val preampFormatted = formatDbValue(settings.preampDb)
+                            Text(
+                                text = "$preampFormatted dB",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = if (settings.preampDb > 0.05f) SonoraAmber else SonoraTeal,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                     Slider(
                         value = settings.preampDb,
@@ -578,7 +621,12 @@ private fun BandVerticalFader(
     ) {
         Surface(
             color = gainColor.copy(alpha = 0.14f),
-            shape = RoundedCornerShape(8.dp)
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .clickable(enabled = enabled && kotlin.math.abs(gainDb) > 0.05f) {
+                    onGainChange(0f)
+                }
         ) {
             Text(
                 text = formatDbValue(if (enabled) gainDb else 0f),
@@ -695,6 +743,77 @@ private fun BandVerticalFader(
                 color = SonoraTextMuted,
                 maxLines = 1
             )
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 2.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(36.dp)
+                    .clip(RoundedCornerShape(50))
+                    .clickable(enabled = enabled && gainDb > EqualizerSettings.MIN_GAIN_DB) {
+                        onGainChange(
+                            (gainDb - 1f).coerceIn(
+                                EqualizerSettings.MIN_GAIN_DB,
+                                EqualizerSettings.MAX_GAIN_DB
+                            )
+                        )
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .background(SonoraBg)
+                        .border(1.dp, SonoraOutline, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Remove,
+                        contentDescription = "Decrease $label by 1 dB",
+                        tint = if (enabled) SonoraTextSecondary else SonoraTextMuted,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
+            }
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(36.dp)
+                    .clip(RoundedCornerShape(50))
+                    .clickable(enabled = enabled && gainDb < EqualizerSettings.MAX_GAIN_DB) {
+                        onGainChange(
+                            (gainDb + 1f).coerceIn(
+                                EqualizerSettings.MIN_GAIN_DB,
+                                EqualizerSettings.MAX_GAIN_DB
+                            )
+                        )
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .background(SonoraBg)
+                        .border(1.dp, SonoraOutline, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Add,
+                        contentDescription = "Increase $label by 1 dB",
+                        tint = if (enabled) SonoraTextSecondary else SonoraTextMuted,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
+            }
         }
     }
 }

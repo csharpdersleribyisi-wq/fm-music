@@ -114,6 +114,9 @@ class SonoraViewModel(
     private val _libraryFilter = MutableStateFlow(LibraryFilter.ALL)
     val libraryFilter: StateFlow<LibraryFilter> = _libraryFilter.asStateFlow()
 
+    private val _librarySearchQuery = MutableStateFlow("")
+    val librarySearchQuery: StateFlow<String> = _librarySearchQuery.asStateFlow()
+
     private val _aiInsightsState = MutableStateFlow<UiState<AiForYouInsights>?>(null)
     val aiInsightsState: StateFlow<UiState<AiForYouInsights>?> = _aiInsightsState.asStateFlow()
 
@@ -254,6 +257,10 @@ class SonoraViewModel(
 
     fun setLibraryFilter(filter: LibraryFilter) {
         _libraryFilter.value = filter
+    }
+
+    fun setLibrarySearchQuery(query: String) {
+        _librarySearchQuery.value = query
     }
 
     fun playTrack(track: Track, queue: List<Track> = MusicCatalog.tracks) {
